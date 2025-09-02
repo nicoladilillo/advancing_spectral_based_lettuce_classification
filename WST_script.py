@@ -284,8 +284,8 @@ def save_elapsed_time(start_time, path):
 def main():
     # Define the four allowed processing pairs
     combinations = [
-        # ["SG", "SVN"],
-        # ["SG", "MSC"],
+        ["SG", "SVN"],
+        ["SG", "MSC"],
         ["SG1", "SVN"],
         ["SG1", "MSC"]
     ]

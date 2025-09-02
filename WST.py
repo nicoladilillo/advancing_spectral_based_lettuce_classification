@@ -515,6 +515,10 @@ class WST:
             
             if confusion_matrix_f:
                 cm = confusion_matrix(y_test, y_pred)
+                # calculate specificity
+                tn, fp, fn, tp = cm.ravel()
+                specificity = tn / (tn + fp)
+                metrics['specificity'] = float(specificity)
                 plt.figure(figsize=(6, 6))
                 sns.heatmap(cm, annot=True, fmt='d', cmap='viridis', cbar=False)
                 plt.xlabel('Predicted')
@@ -656,7 +660,7 @@ class WST:
                 metrics, pred_y = self._compute_metrics(X_train, self.y_train, X_test, self.y_test, pred_f=True,
                                                        var_selected_i=list(range(len(var_combinations[i]))), model_type=model_type,
                                                        learning_curve=learning_curve, confusion_matrix_f=confusion_matrix_f)
-                print(f"Accuracy: {metrics['accuracy']:.2f}, Recall: {metrics['recall']:.2f}, Precision: {metrics['precision']:.2f}, F1: {metrics['f1']:.2f}", end=" ")
+                print(f"Accuracy: {metrics['accuracy']:.2f}, Recall: {metrics['recall']:.2f}, Precision: {metrics['precision']:.2f}, Specifity: {metrics['specificity']:.2f}, F1: {metrics['f1']:.2f}", end=" ")
                 if model_type == 'PLS':
                     print(f", nLV: {metrics['nLV']}, Cutoff: {metrics['cutoff']:.2f}")
                 else:
@@ -1146,6 +1150,7 @@ class WST:
         @param N: Number of permutations.
         @param save_file: If True, save the permutation results.
         """
+        return
         if wavelengths is None:
             var_combinations = range(self.P)
         else:
