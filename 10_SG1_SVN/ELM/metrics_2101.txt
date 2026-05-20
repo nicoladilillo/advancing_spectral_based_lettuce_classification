@@ -1,0 +1,1 @@
+{'accuracy': 0.4827586206896552, 'recall': 0.03225806451612903, 'precision': 1.0, 'f1': 0.0625, 'cutoff': None, 'nLV': None, 'specificity': 1.0, 'LV': None, 'Cutoff': None, 'Model': 'ELM'}

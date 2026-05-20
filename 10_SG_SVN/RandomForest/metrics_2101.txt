@@ -1,0 +1,1 @@
+{'accuracy': 0.5932203389830508, 'recall': 0.6129032258064516, 'precision': 0.6129032258064516, 'f1': 0.6129032258064516, 'cutoff': None, 'nLV': None, 'specificity': 0.5714285714285714, 'LV': None, 'Cutoff': None, 'Model': 'RandomForest'}

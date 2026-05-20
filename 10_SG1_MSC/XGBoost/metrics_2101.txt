@@ -1,0 +1,1 @@
+{'accuracy': 0.6379310344827587, 'recall': 0.6129032258064516, 'precision': 0.6785714285714286, 'f1': 0.6440677966101694, 'cutoff': None, 'nLV': None, 'specificity': 0.6666666666666666, 'LV': None, 'Cutoff': None, 'Model': 'XGBoost'}

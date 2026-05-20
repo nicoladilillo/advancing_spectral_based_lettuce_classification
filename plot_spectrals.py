@@ -60,9 +60,6 @@ sg1_msc_x = (total_width - (sg1_msc_pix.width + sg1_svn_pix.width + margin)) // 
 sg1_svn_x = sg1_msc_x + sg1_msc_pix.width + margin
 page.insert_image(fitz.Rect(sg1_msc_x, row3_y, sg1_msc_x + sg1_msc_pix.width, row3_y + sg1_msc_pix.height), pixmap=sg1_msc_pix)
 page.insert_image(fitz.Rect(sg1_svn_x, row3_y, sg1_svn_x + sg1_svn_pix.width, row3_y + sg1_svn_pix.height), pixmap=sg1_svn_pix)
-# Labels
-page.insert_text(fitz.Point(sg1_msc_x, row3_y + sg1_msc_pix.height + 5), f"SG1_MSC: {sg1_msc_path}", fontsize=font_size, color=(0, 0, 0))
-page.insert_text(fitz.Point(sg1_svn_x, row3_y + sg1_svn_pix.height + 5), f"SG1_SVN: {sg1_svn_path}", fontsize=font_size, color=(0, 0, 0))
 
 # Save the result
 doc.save(output_path)

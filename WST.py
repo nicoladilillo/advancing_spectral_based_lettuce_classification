@@ -20,6 +20,9 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import plotly.express as px
 from sklearn.svm import SVC
+from sklearn.ensemble import RandomForestClassifier
+from xgboost import XGBClassifier
+from sklearn.neural_network import MLPClassifier
 from tqdm import tqdm
 import warnings
 warnings.filterwarnings("ignore")
@@ -166,6 +169,8 @@ class WST:
         self.path = self._check_exists(path)
         self.path_statistics = self._check_exists(os.path.join(path, 'statistics'))
         self.path_coefficients = self._check_exists(os.path.join(path, 'coefficients'))
+        
+        print(X_df)
         
         if X_df is not None:
             # Determine index position of the class column.
@@ -496,6 +501,10 @@ class WST:
         # For classification, use the predict method (which applies the cutoff internally).
         # print(f"Selected variables: {len(var_selected_i)}")
         y_pred = self.pls.predict(X_test)
+
+        # XGBoost is trained on encoded labels; convert predictions back to original class names.
+        if model_type == 'XGBoost' and self.task == 'classification' and hasattr(self, 'xgb_label_binarizer'):
+            y_pred = self.xgb_label_binarizer.inverse_transform(np.asarray(y_pred).reshape(-1, 1))
         # print(f"Predicted shape: {y_pred.shape}, Test shape: {y_test.shape}")
         
         if self.task == 'classification':
@@ -512,6 +521,9 @@ class WST:
             if model_type == 'PLS':
                 metrics['cutoff'] = self.pls.cutoff
                 metrics['nLV'] = self.pls.n_components
+            else:
+                metrics['cutoff'] = None
+                metrics['nLV'] = None
             
             if confusion_matrix_f:
                 cm = confusion_matrix(y_test, y_pred)
@@ -663,6 +675,8 @@ class WST:
                 print(f"Accuracy: {metrics['accuracy']:.2f}, Recall: {metrics['recall']:.2f}, Precision: {metrics['precision']:.2f}, Specifity: {metrics['specificity']:.2f}, F1: {metrics['f1']:.2f}", end=" ")
                 if model_type == 'PLS':
                     print(f", nLV: {metrics['nLV']}, Cutoff: {metrics['cutoff']:.2f}")
+                elif model_type in ['SVM', 'ELM', 'XGBoost']:
+                    print()
                 else:
                     print()
             else:
@@ -688,8 +702,9 @@ class WST:
             else:
                 latex += f"{self.MAX_COMPONENTS} & {calibration} & {len(var_combinations[i])} & {metrics['mse']:.2f} & {metrics['rmse']:.2f} & {metrics['r2']:.2f} & {metrics['q2']:.2f} \\ \\hline\n"
 
-            metrics['LV'] =  self.pls.n_components if model_type == 'PLS' else None
+            metrics['LV'] = self.pls.n_components if model_type == 'PLS' else None
             metrics['Cutoff'] = self.pls.cutoff if model_type == 'PLS' else None
+            metrics['Model'] = model_type
 
             # Save metrics into a file
             with open(os.path.join(self.path, f'metrics_{len(current_wavelengths)}.txt'), 'w') as f:
@@ -1097,8 +1112,19 @@ class WST:
         elif model_type == 'SVM' and self.task == 'classification':
             self.pls = SVC(kernel='linear', probability=True, random_state=42)
             self.pls.fit(X, y)
+        elif model_type == 'ELM' and self.task == 'classification':
+            self.pls = MLPClassifier(hidden_layer_sizes=(100,), random_state=42, max_iter=1000)
+            self.pls.fit(X, y)
+        elif model_type == 'XGBoost' and self.task == 'classification':
+            self.pls = XGBClassifier(n_estimators=100, max_depth=5, learning_rate=0.1, random_state=42, eval_metric='logloss')
+            self.xgb_label_binarizer = LabelBinarizer()
+            y_encoded = self.xgb_label_binarizer.fit_transform(y).ravel()
+            self.pls.fit(X, y_encoded)
+        elif model_type in ['RandomForest', 'RF', 'random_forest'] and self.task == 'classification':
+            self.pls = RandomForestClassifier(n_estimators=100, max_depth=5, random_state=42)
+            self.pls.fit(X, y)
         else:
-            raise NotImplementedError('Only PLS model_type is supported in _cross_predict.')
+            raise NotImplementedError('Only PLS, SVM, ELM, XGBoost and RandomForest model_type is supported in _cross_predict.')
 
     def _compute_learning_curve(self, X, y, model_type='PLS'):
         """
@@ -1108,16 +1134,32 @@ class WST:
         @param y: Target vector.
         @param cutoff: Cutoff value (for classification; not used for regression).
         @param len_var: Number of selected variables.
-        @param model_type: Model type.
+        @param model_type: Model type ('PLS', 'SVM', 'ELM', 'XGBoost').
         """
         len_var = len(X[1])
         if model_type == 'PLS':
             # For classification, instantiate PLSDAClassifier without externally providing cutoff.
             model = PLSDAClassifier(n_components=self.MAX_COMPONENTS, cutoff=self.cutoff) if self.task=='classification' else PLSRegression(n_components=self.MAX_COMPONENTS)
-            train_sizes, train_scores, validation_scores = learning_curve(model, X, y,
-                                                                           train_sizes=np.linspace(0.1, 1.0, 30), 
-                                                                           scoring='accuracy' if self.task=='classification' else 'r2',
-                                                                           random_state=42, cv=self.CV_FOLD)
+        elif model_type == 'SVM':
+            model = SVC(kernel='linear', probability=True, random_state=42)
+        elif model_type == 'ELM':
+            model = MLPClassifier(hidden_layer_sizes=(100,), random_state=42, max_iter=1000)
+        elif model_type == 'XGBoost':
+            model = XGBClassifier(n_estimators=100, max_depth=5, learning_rate=0.1, random_state=42, eval_metric='logloss')
+        elif model_type in ['RandomForest', 'RF', 'random_forest'] and self.task == 'classification':
+            model = RandomForestClassifier(n_estimators=100, max_depth=5, random_state=42)
+        else:
+            raise NotImplementedError(f'Model type {model_type} is not supported in _compute_learning_curve.')
+
+        y_for_curve = y
+        if model_type == 'XGBoost' and self.task == 'classification':
+            lb = LabelBinarizer()
+            y_for_curve = lb.fit_transform(y).ravel()
+        
+        train_sizes, train_scores, validation_scores = learning_curve(model, X, y_for_curve,
+                                                                       train_sizes=np.linspace(0.1, 1.0, 30), 
+                                                                       scoring='accuracy' if self.task=='classification' else 'r2',
+                                                                       random_state=42, cv=self.CV_FOLD)
         data = []
         n_train_sizes = train_sizes.shape[0]
         n_folds = train_scores.shape[1]
@@ -1142,15 +1184,15 @@ class WST:
         plt.show()
         plt.close()
 
-    def permutation_test(self, wavelengths=None, N=1000, save_file=True):
+    def permutation_test(self, wavelengths=None, N=1000, save_file=True, model_type='PLS'):
         """
         Perform a permutation test to assess model significance.
 
         @param wavelengths: List of wavelengths to test.
         @param N: Number of permutations.
         @param save_file: If True, save the permutation results.
+        @param model_type: Model type ('PLS', 'SVM', 'ELM', 'XGBoost').
         """
-        return
         if wavelengths is None:
             var_combinations = range(self.P)
         else:
@@ -1165,26 +1207,26 @@ class WST:
         y_train = self.y_train.copy()
         X_test = self.X_test[:,var_combinations]
         y_test = self.y_test
-        self._cross_predict(X_train, y_train, model_type='PLS')
+        self._cross_predict(X_train, y_train, model_type=model_type)
 
         if self.task == 'classification':
-            metrics = self._compute_metrics(X_train, y_train, X_test, y_test, var_selected_i=var_combinations, model_type='PLS')
+            metrics = self._compute_metrics(X_train, y_train, X_test, y_test, var_selected_i=var_combinations, model_type=model_type)
             print(f"Accuracy: {metrics['accuracy']:.2f}, Recall: {metrics['recall']:.2f}, Precision: {metrics['precision']:.2f}, F1: {metrics['f1']:.2f}")
             permutation_scores.append([metrics['accuracy'], metrics['recall'], metrics['precision'], metrics['f1']])
         else:
-            metrics = self._compute_metrics(X_train, y_train, X_test, y_test, var_selected_i=var_combinations, model_type='PLS')
+            metrics = self._compute_metrics(X_train, y_train, X_test, y_test, var_selected_i=var_combinations, model_type=model_type)
             print(f"MSE: {metrics['mse']:.2f}, RMSE: {metrics['rmse']:.2f}, R2: {metrics['r2']:.2f}, Q2: {metrics['q2']:.2f}")
             permutation_scores.append([metrics['mse'], metrics['rmse'], metrics['r2'], metrics['q2']])
         
         for _ in tqdm(range(N)):
             np.random.shuffle(y_train)
             # np.random.shuffle(y_test)
-            self._cross_predict(X_train, y_train, model_type='PLS')
+            self._cross_predict(X_train, y_train, model_type=model_type)
             if self.task == 'classification':
-                metrics = self._compute_metrics(X_train, y_train, X_test, y_test, var_selected_i=var_combinations, model_type='PLS')
+                metrics = self._compute_metrics(X_train, y_train, X_test, y_test, var_selected_i=var_combinations, model_type=model_type)
                 permutation_scores.append([metrics['accuracy'], metrics['recall'], metrics['precision'], metrics['f1']])
             else:
-                metrics = self._compute_metrics(X_train, y_train, X_test, y_test, var_selected_i=var_combinations, model_type='PLS')
+                metrics = self._compute_metrics(X_train, y_train, X_test, y_test, var_selected_i=var_combinations, model_type=model_type)
                 permutation_scores.append([metrics['mse'], metrics['rmse'], metrics['r2'], metrics['q2']])
             
         if save_file:
