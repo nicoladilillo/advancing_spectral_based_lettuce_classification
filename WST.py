@@ -19,6 +19,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import plotly.express as px
+import ast
 from sklearn.svm import SVC
 from sklearn.ensemble import RandomForestClassifier
 from xgboost import XGBClassifier
@@ -108,6 +109,54 @@ class PLSDAClassifier(BaseEstimator, ClassifierMixin):
         Get the regression coefficients.
         """
         return self.pls.coef_
+
+# =============================================================================
+# ELMClassifier
+# =============================================================================
+class ELM:
+    def __init__(self, n_hidden=200, activation='relu'):
+        self.n_hidden = n_hidden
+        self.activation = activation
+        self.W = None
+        self.b = None
+        self.beta = None
+        self.classes_ = None
+    
+    def sigmoid(self, x):
+        return 1 / (1 + np.exp(-np.clip(x, -500, 500)))
+    
+    def relu(self, x):
+        return np.maximum(0, x)
+    
+    def activation_func(self, x):
+        return self.sigmoid(x) if self.activation == 'sigmoid' else self.relu(x)
+    
+    def fit(self, X_train, y_train):
+        n_features = X_train.shape[1]
+        
+        # Get unique classes
+        self.classes_ = np.unique(y_train)
+        n_classes = len(self.classes_)
+        
+        # One-hot encode labels
+        y_train_oh = np.zeros((len(y_train), n_classes))
+        for i, label in enumerate(y_train):
+            y_train_oh[i, np.where(self.classes_ == label)[0][0]] = 1
+        
+        # Random weights and bias
+        self.W = np.random.randn(n_features, self.n_hidden)
+        self.b = np.random.randn(self.n_hidden)
+        
+        # Hidden layer output
+        H = self.activation_func(X_train @ self.W + self.b)
+        
+        # Moore-Penrose inverse
+        self.beta = np.linalg.pinv(H) @ y_train_oh
+    
+    def predict(self, X_test):
+        H = self.activation_func(X_test @ self.W + self.b)
+        y_pred_proba = H @ self.beta
+        return self.classes_[np.argmax(y_pred_proba, axis=1)]
 
 # =============================================================================
 # WST Class
@@ -1113,7 +1162,7 @@ class WST:
             self.pls = SVC(kernel='linear', probability=True, random_state=42)
             self.pls.fit(X, y)
         elif model_type == 'ELM' and self.task == 'classification':
-            self.pls = MLPClassifier(hidden_layer_sizes=(100,), random_state=42, max_iter=1000)
+            self.pls = ELM()
             self.pls.fit(X, y)
         elif model_type == 'XGBoost' and self.task == 'classification':
             self.pls = XGBClassifier(n_estimators=100, max_depth=5, learning_rate=0.1, random_state=42, eval_metric='logloss')
@@ -1143,7 +1192,9 @@ class WST:
         elif model_type == 'SVM':
             model = SVC(kernel='linear', probability=True, random_state=42)
         elif model_type == 'ELM':
-            model = MLPClassifier(hidden_layer_sizes=(100,), random_state=42, max_iter=1000)
+            # mdoel = MLPClassifier(hidden_layer_sizes=(100,), random_state=42, max_iter=1000)
+            # model = ELMClassifier(n_hidden=100, random_state=42)
+            model = ELM()
         elif model_type == 'XGBoost':
             model = XGBClassifier(n_estimators=100, max_depth=5, learning_rate=0.1, random_state=42, eval_metric='logloss')
         elif model_type in ['RandomForest', 'RF', 'random_forest'] and self.task == 'classification':
@@ -1207,16 +1258,46 @@ class WST:
         y_train = self.y_train.copy()
         X_test = self.X_test[:,var_combinations]
         y_test = self.y_test
-        self._cross_predict(X_train, y_train, model_type=model_type)
 
-        if self.task == 'classification':
-            metrics = self._compute_metrics(X_train, y_train, X_test, y_test, var_selected_i=var_combinations, model_type=model_type)
-            print(f"Accuracy: {metrics['accuracy']:.2f}, Recall: {metrics['recall']:.2f}, Precision: {metrics['precision']:.2f}, F1: {metrics['f1']:.2f}")
-            permutation_scores.append([metrics['accuracy'], metrics['recall'], metrics['precision'], metrics['f1']])
-        else:
-            metrics = self._compute_metrics(X_train, y_train, X_test, y_test, var_selected_i=var_combinations, model_type=model_type)
-            print(f"MSE: {metrics['mse']:.2f}, RMSE: {metrics['rmse']:.2f}, R2: {metrics['r2']:.2f}, Q2: {metrics['q2']:.2f}")
-            permutation_scores.append([metrics['mse'], metrics['rmse'], metrics['r2'], metrics['q2']])
+        # Try to reuse saved metrics to avoid recomputing the original baseline
+        metrics_file = os.path.join(self.path, f'metrics_{n}.txt')
+        baseline_used = False
+        if os.path.exists(metrics_file):
+            try:
+                with open(metrics_file, 'r') as mf:
+                    content = mf.read()
+                    saved_metrics = ast.literal_eval(content)
+                # Check saved_metrics contains expected keys for the task
+                if self.task == 'classification' and all(k in saved_metrics for k in ('accuracy', 'recall', 'precision', 'f1')):
+                    print(f"Using saved metrics from {metrics_file} as baseline")
+                    permutation_scores.append([float(saved_metrics['accuracy']), float(saved_metrics['recall']), float(saved_metrics['precision']), float(saved_metrics['f1'])])
+                    baseline_used = True
+                elif self.task != 'classification' and all(k in saved_metrics for k in ('mse', 'rmse', 'r2', 'q2')):
+                    print(f"Using saved metrics from {metrics_file} as baseline")
+                    permutation_scores.append([float(saved_metrics['mse']), float(saved_metrics['rmse']), float(saved_metrics['r2']), float(saved_metrics['q2'])])
+                    baseline_used = True
+            except Exception:
+                baseline_used = False
+
+        # Print the metrics used as baseline
+        if baseline_used:
+            if self.task == 'classification':
+                print(f"Baseline metrics from file: Accuracy: {permutation_scores[0][0]:.2f}, Recall: {permutation_scores[0][1]:.2f}, Precision: {permutation_scores[0][2]:.2f}, F1: {permutation_scores[0][3]:.2f}")
+            else:
+                print(f"Baseline metrics from file: MSE: {permutation_scores[0][0]:.2f}, RMSE: {permutation_scores[0][1]:.2f}, R2: {permutation_scores[0][2]:.2f}, Q2: {permutation_scores[0][3]:.2f}")
+
+        # If no saved baseline found, compute it now
+        if not baseline_used:
+            self._cross_predict(X_train, y_train, model_type=model_type)
+
+            if self.task == 'classification':
+                metrics = self._compute_metrics(X_train, y_train, X_test, y_test, var_selected_i=var_combinations, model_type=model_type)
+                print(f"Accuracy: {metrics['accuracy']:.2f}, Recall: {metrics['recall']:.2f}, Precision: {metrics['precision']:.2f}, F1: {metrics['f1']:.2f}")
+                permutation_scores.append([metrics['accuracy'], metrics['recall'], metrics['precision'], metrics['f1']])
+            else:
+                metrics = self._compute_metrics(X_train, y_train, X_test, y_test, var_selected_i=var_combinations, model_type=model_type)
+                print(f"MSE: {metrics['mse']:.2f}, RMSE: {metrics['rmse']:.2f}, R2: {metrics['r2']:.2f}, Q2: {metrics['q2']:.2f}")
+                permutation_scores.append([metrics['mse'], metrics['rmse'], metrics['r2'], metrics['q2']])
         
         for _ in tqdm(range(N)):
             np.random.shuffle(y_train)

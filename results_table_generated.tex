@@ -1,0 +1,55 @@
+\begin{table}[th!]
+\centering
+\footnotesize
+\setlength\tabcolsep{2.3pt}
+\renewcommand{\arraystretch}{1.2}
+
+\begin{tabular}{ccccccccccc}
+\hline
+\textbf{Preproc.} & \textbf{Algo.} & \textbf{\#Wav.} & \textbf{\#LV} & \textbf{Acc.} & \textbf{Rec.} & \textbf{Prec.} & \textbf{F1} & \textbf{Spec.} &
+\begin{tabular}{c}\textbf{Acc./}\\\textbf{Wav.}\end{tabular} &
+\begin{tabular}{c}\textbf{Comput.}\\\textbf{Time}\end{tabular} \\
+\hline
+SG + MSC & PLS-DA       & 2101 &  7 & 0.73 & 0.81 & 0.71 & 0.76 & 0.66 & 0.00035 & -- \\
+          & SVM          & 2101 & -- & 0.83 & 0.87 & 0.82 & 0.84 & 0.79 & 0.00040 & -- \\
+          & ELM          & 2101 & -- & 0.73 & 0.81 & 0.71 & 0.76 & 0.66 & 0.00035 & -- \\
+          & XGBoost      & 2101 & -- & 0.55 & 0.58 & 0.56 & 0.57 & 0.52 & 0.00026 & -- \\
+          & RandomForest & 2101 & -- & 0.67 & 0.77 & 0.65 & 0.71 & 0.55 & 0.00032 & -- \\
+          & CARS         &   25 &  6 & 0.83 & 0.90 & 0.80 & 0.85 & 0.76 & 0.03333 & 2:40:43 \\
+          & GA-iPLS      &  609 & 10 & 0.88 & 0.94 & 0.85 & 0.89 & 0.83 & 0.00145 & 0:12:07 \\
+          & BOSS         &   18 & 10 & 0.88 & 0.90 & 0.88 & 0.89 & 0.86 & 0.04907 & 3:14:08 \\
+          & iGA-BOSS     &   25 & 10 & 0.92 & 1.00 & 0.86 & 0.93 & 0.83 & 0.03667 & 1:52:53 \\
+SG + SNV & PLS-DA       & 2101 &  9 & 0.85 & 0.81 & 0.89 & 0.85 & 0.89 & 0.00040 & -- \\
+          & SVM          & 2101 & -- & 0.75 & 0.81 & 0.74 & 0.77 & 0.68 & 0.00035 & -- \\
+          & ELM          & 2101 & -- & 0.75 & 0.84 & 0.72 & 0.78 & 0.64 & 0.00035 & -- \\
+          & XGBoost      & 2101 & -- & 0.61 & 0.55 & 0.65 & 0.60 & 0.68 & 0.00029 & -- \\
+          & RandomForest & 2101 & -- & 0.59 & 0.61 & 0.61 & 0.61 & 0.57 & 0.00028 & -- \\
+          & CARS         &   48 & 10 & 0.81 & 0.81 & 0.83 & 0.82 & 0.82 & 0.01695 & 2:37:54 \\
+          & GA-iPLS      &  588 &  8 & 0.88 & 0.87 & 0.90 & 0.89 & 0.89 & 0.00150 & 0:11:48 \\
+          & BOSS         &   18 & 10 & 0.92 & 0.90 & 0.93 & 0.92 & 0.93 & 0.05085 & 3:12:51 \\
+          & iGA-BOSS     &   38 & 10 & 0.90 & 0.90 & 0.90 & 0.90 & 0.89 & 0.02364 & 1:49:19 \\
+SG1 + MSC & PLS-DA       & 2101 &  8 & 0.81 & 0.87 & 0.79 & 0.83 & 0.74 & 0.00039 & -- \\
+          & SVM          & 2101 & -- & 0.69 & 0.74 & 0.70 & 0.72 & 0.63 & 0.00033 & -- \\
+          & ELM          & 2101 & -- & 0.66 & 0.71 & 0.67 & 0.69 & 0.59 & 0.00031 & -- \\
+          & XGBoost      & 2101 & -- & 0.64 & 0.61 & 0.68 & 0.64 & 0.67 & 0.00030 & -- \\
+          & RandomForest & 2101 & -- & 0.76 & 0.74 & 0.79 & 0.77 & 0.78 & 0.00036 & -- \\
+          & CARS         &   90 &  7 & 0.83 & 0.90 & 0.80 & 0.85 & 0.74 & 0.00920 & 2:34:30 \\
+          & GA-iPLS      &  757 &  8 & 0.90 & 0.94 & 0.88 & 0.91 & 0.85 & 0.00118 & 0:12:21 \\
+          & BOSS         &   19 &  9 & 0.91 & 0.97 & 0.88 & 0.92 & 0.85 & 0.04809 & 3:11:52 \\
+          & iGA-BOSS     &   20 & 10 & 0.95 & 0.94 & 0.97 & 0.95 & 0.96 & 0.04741 & 2:01:37 \\
+SG1 + SNV & PLS-DA       & 2101 &  9 & 0.83 & 0.84 & 0.84 & 0.84 & 0.81 & 0.00039 & -- \\
+          & SVM          & 2101 & -- & 0.81 & 0.84 & 0.81 & 0.83 & 0.78 & 0.00039 & -- \\
+          & ELM          & 2101 & -- & 0.71 & 0.71 & 0.73 & 0.72 & 0.70 & 0.00034 & -- \\
+          & XGBoost      & 2101 & -- & 0.66 & 0.61 & 0.70 & 0.66 & 0.70 & 0.00031 & -- \\
+          & RandomForest & 2101 & -- & 0.71 & 0.65 & 0.77 & 0.70 & 0.78 & 0.00034 & -- \\
+          & CARS         &   37 &  8 & 0.78 & 0.77 & 0.80 & 0.79 & 0.78 & 0.02097 & 2:34:14 \\
+          & GA-iPLS      &  631 &  6 & 0.91 & 0.90 & 0.93 & 0.92 & 0.93 & 0.00145 & 0:12:07 \\
+          & BOSS         &   19 &  6 & 0.93 & 0.94 & 0.94 & 0.94 & 0.93 & 0.04900 & 3:11:11 \\
+          & iGA-BOSS     &   64 &  6 & 0.93 & 0.94 & 0.94 & 0.94 & 0.93 & 0.01455 & 1:51:30 \\
+\hline
+\end{tabular}
+\caption{Test set classification performance across preprocessing pipelines and wavelength-selection strategies. 
+In the table, PLS-DA, SVM, ELM, XGBoost, and Random Forest are classification models based on the full spectrum, whereas the other rows represent PLS-DA models in which the wavelengths are selected using the CARS, GA-iPLS, BOSS, and iGA-BOSS methods, respectively.
+Metrics include accuracy (Acc.), recall (Rec.), precision (Prec.), F1-score (F1), specificity (Spec.), accuracy per wavelength, and computational time.}
+\label{tab:results}
+\end{table}
